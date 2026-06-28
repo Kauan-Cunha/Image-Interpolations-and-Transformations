@@ -1,0 +1,54 @@
+from typing import Annotated
+import typer
+import matplotlib.pyplot as plt
+import cv2
+import src
+
+app = typer.Typer()
+
+@app.command()
+def main(img: Annotated[str, typer.Option('-i', '--input', '--image', '--entrada')]
+        ,output: Annotated[str, typer.Option('-o', '--output', '--saida')] = None
+        ,angle : Annotated[float, typer.Option('-a', '--angle', '--angulo')] = None
+        ,factor: Annotated[float, typer.Option('-e', '--scale', '--escala')] = None
+        ,dim: Annotated[tuple[int, int], typer.Option('-d', '--dimension', '--height', '--dimensao')] = None
+        ,interpolation: Annotated[src.Interpolation, typer.Option('-m', '--interpolation', '--interpolacao')] = src.Interpolation.bilinear):
+
+    if angle is not None and factor is not None:
+        raise ValueError('NÃO é permitido colocar o angulo e fator de escala simultaneamente.')
+    elif angle is None and factor is None:
+        raise ValueError('Coloque ao menos o valor de uma das transformações')
+
+    #instanciando ImageManager
+    match interpolation:
+        case src.Interpolation.cni:
+            image = src.ImageManager(img, src.CNinterpolation)
+        case src.Interpolation.lagrange:
+            image = src.ImageManager(img, src.LagrangeInterpolation)
+        case src.Interpolation.bilinear:
+            image = src.ImageManager(img, src.BilinearInterpolation)
+        case src.Interpolation.bicubic:
+            image = src.ImageManager(img, src.BicubicInterpolation)
+    
+    #se não expecifica a dimensão de saida, mantém a da imagem original
+    if dim is None:
+        dim = (image.img.shape[0], image.img.shape[1])
+
+    #pega a imagem aplicada a transformação
+    if angle:
+        transformed = image.rotate(angle, dim)
+    
+    if factor:
+        transformed = image.scale(factor, dim)
+
+    #salva o output
+    if output:
+        plt.imsave(output, transformed, cmap = 'gray')
+    else:
+        plt.imsave(
+            f"{'rotated' if angle else 'scale'}_{angle if angle else factor}{'X' if factor else 'rad'}_{interpolation}.jpg",
+            transformed,
+            cmap="gray")    
+            
+if __name__ == "__main__":
+    app()
