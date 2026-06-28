@@ -12,7 +12,8 @@ def main(img: Annotated[str, typer.Option('-i', '--input', '--image', '--entrada
         ,angle : Annotated[float, typer.Option('-a', '--angle', '--angulo')] = None
         ,factor: Annotated[float, typer.Option('-e', '--scale', '--escala')] = None
         ,dim: Annotated[tuple[int, int], typer.Option('-d', '--dimension', '--height', '--dimensao')] = None
-        ,interpolation: Annotated[src.Interpolation, typer.Option('-m', '--interpolation', '--interpolacao')] = src.Interpolation.bilinear):
+        ,interpolation: Annotated[src.Interpolation, typer.Option('-m', '--interpolation', '--interpolacao')] = src.Interpolation.bilinear
+        ,show_flag: Annotated[bool, typer.Option('-s', '--show')] = False):
 
     if angle is not None and factor is not None:
         raise ValueError('NÃO é permitido colocar o angulo e fator de escala simultaneamente.')
@@ -36,19 +37,24 @@ def main(img: Annotated[str, typer.Option('-i', '--input', '--image', '--entrada
 
     #pega a imagem aplicada a transformação
     if angle:
-        transformed = image.rotate(angle, dim)
+        image.rotate(angle, dim)
     
     if factor:
-        transformed = image.scale(factor, dim)
+        image.scale(factor, dim)
 
     #salva o output
     if output:
-        plt.imsave(output, transformed, cmap = 'gray')
+        if output[-3:] not in {'.png', '.jpg'}: raise ValueError('Você deve especificar a extensão (Opções: .png e .jpg).')
+        image.save_image(output, transformed=True)
+        
     else:
-        plt.imsave(
-            f"{'rotated' if angle else 'scale'}_{angle if angle else factor}{'X' if factor else 'rad'}_{interpolation}.jpg",
-            transformed,
-            cmap="gray")    
+        image.save_image( f"{'rotated' if angle else 'scale'}_{angle if angle else factor}{'X' if factor else 'rad'}_{interpolation}.jpg", 
+                         transformed=True)
             
+    
+    #mostra se a flag show foi chamada
+    if show_flag:
+        image.show_image(transformed=True)
+        
 if __name__ == "__main__":
     app()

@@ -114,45 +114,15 @@ def LagrangeInterpolation(img: np.ndarray, x: float, y: float) -> int:
 class ImageManager():
     def __init__(self, file_name: str, interpolation: Callable):
         self.img = self._load_image(file_name)
+        self.transformed_img = None
         self._to_grayscale()
         self._to_uint8()
-        self.interpolation_fun = interpolation
+        self.interpolation_func = interpolation
 
     def _load_image(self, file_name: str) -> np.ndarray:
         file_path = 'imgs/' + file_name
         return plt.imread(file_path)
-
-    def rotate(self, angle: float, dim : tuple) -> np.ndarray:
-        result = np.empty((dim[0], dim[1]))
-        for i in range(dim[0]):
-            for j in range(dim[1]):
-                x = i * math.cos(2*np.pi - angle) - j * math.sin(2*np.pi - angle)
-                y = i * math.sin(2*np.pi - angle)  + j * math.cos(2*np.pi - angle)
-
-                #essa condicional garante que x e y são um pixel na imagem original
-                if (0 <= x <= self.img.shape[0]) and (0 <= y <= self.img.shape[1]):
-                    value = self.interpolation_fun(self.img, x, y)
-                    result[i, j] = value
-                else:
-                    result[i, j] = 0
-        return result
-
-    def scale(self, factor : float, dim : tuple) -> np.ndarray:
-        result = np.empty((dim[0], dim[1]))
-        for i in range(dim[0]):
-            for j in range(dim[1]):
-                x = i * (1/factor)
-                y = j * (1/factor)
-
-                #essa condicional garante que x e y são um pixel na imagem original
-                if (0 <= x < self.img.shape[0]) and (0 <= y < self.img.shape[1]):
-                    value = self.interpolation_fun(self.img, x, y)
-                    result[i, j] = value
-                else:
-                    result[i, j] = 0
-        
-        return result
-
+    
     def _to_grayscale(self):
         """
         Converte a imagem para escala de cinza.
@@ -172,6 +142,53 @@ class ImageManager():
 
     def _to_uint8(self):
         self.img = np.clip(self.img, 0, 255).astype(np.uint8)
+
+    def rotate(self, angle: float, dim : tuple) -> None:
+        result = np.empty((dim[0], dim[1]))
+        for i in range(dim[0]):
+            for j in range(dim[1]):
+                x = i * math.cos(2*np.pi - angle) - j * math.sin(2*np.pi - angle)
+                y = i * math.sin(2*np.pi - angle)  + j * math.cos(2*np.pi - angle)
+
+                #essa condicional garante que x e y são um pixel na imagem original
+                if (0 <= x <= self.img.shape[0]) and (0 <= y <= self.img.shape[1]):
+                    value = self.interpolation_func(self.img, x, y)
+                    result[i, j] = value
+                else:
+                    result[i, j] = 0
+        
+        self.transformed_img = result
+
+    def scale(self, factor : float, dim : tuple) -> None:
+        result = np.empty((dim[0], dim[1]))
+        for i in range(dim[0]):
+            for j in range(dim[1]):
+                x = i * (1/factor)
+                y = j * (1/factor)
+
+                #essa condicional garante que x e y são um pixel na imagem original
+                if (0 <= x < self.img.shape[0]) and (0 <= y < self.img.shape[1]):
+                    value = self.interpolation_func(self.img, x, y)
+                    result[i, j] = value
+                else:
+                    result[i, j] = 0
+        
+        self.transformed_img = result
+    
+    def save_image(self, file_name:str, transformed = False):
+        if transformed:
+            plt.imsave(file_name, self.transformed_img, cmap = 'gray')
+        else:
+            plt.imsave(file_name, self.img, cmap = 'gray')
+        
     
     def set_interpolation(self, new_interpolation: Callable):
         self.interpolation_fun = new_interpolation
+    
+    def show_image(self, transformed = False):
+        if transformed:
+            plt.imshow(self.transformed_img, cmap='gray')
+        else:
+            plt.imshow(self.img, cmap= 'gray')
+        
+        plt.show()
