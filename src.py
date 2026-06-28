@@ -3,12 +3,17 @@ import numpy as np
 import math
 from enum import Enum
 from typing import Callable
+import cv2
 
 class Interpolation(str, Enum):
     cni = 'cni' #closest neighbor interpolation
     lagrange = 'lagrange'
     bilinear = 'bilinear'
     bicubic = 'bicubic'
+
+class FeatureDetectorType(str, Enum):
+    sift = 'sift'
+    orb = 'orb'
 
 def cn_interpolation(img: np.ndarray, x: float, y: float) -> int:
     """
@@ -111,6 +116,13 @@ def lagrange_interpolation(img: np.ndarray, x: float, y: float) -> int:
 
     return int(np.clip(term1 + term2 + term3 + term4, 0, 255))
 
+ESTRATEGIAS_INTERPOLACAO = {
+    Interpolation.cni: cn_interpolation,
+    Interpolation.lagrange: lagrange_interpolation,
+    Interpolation.bilinear: bilinear_interpolation,
+    Interpolation.bicubic: bicubic_interpolation
+}
+
 class ImageManager():
     def __init__(self, file_name: str, interpolation: Callable, gray_scale:bool = False):
         self.img = self._load_image(file_name)
@@ -193,10 +205,70 @@ class ImageManager():
         
         plt.show()
 
+class PanoramaManager:
+    def __init__(self, img_path_1: str, img_path_2: str):
+        self.img1_color = cv2.imread(f'imgs/{img_path_1}')
+        self.img2_color = cv2.imread(f'imgs/{img_path_2}')
+        self.img1_gray = cv2.cvtColor(cv2.imread(f'imgs/{img_path_1}'), cv2.COLOR_BGR2GRAY)
+        self.img2_gray = cv2.cvtColor(cv2.imread(f'imgs/{img_path_2}'), cv2.COLOR_BGR2GRAY)
 
-ESTRATEGIAS_INTERPOLACAO = {
-    Interpolation.cni: cn_interpolation,
-    Interpolation.lagrange: lagrange_interpolation,
-    Interpolation.bilinear: bilinear_interpolation,
-    Interpolation.bicubic: bicubic_interpolation
-}
+        self.paronama = None
+        self.matches_img = None
+        
+    def create_panorama(self, detector_type: FeatureDetectorType, threshold: float, output_name: str, show_matches: bool):
+        if detector_type == FeatureDetectorType.sift:
+            detector = cv2.SIFT_create()
+            norm_type = cv2.NORM_L2
+        else: 
+            detector = cv2.ORB_create()
+            norm_type = cv2.NORM_HAMMING
+
+        kp1, des1 = detector.detectAndCompute(self.img1_gray, None)
+        kp2, des2 = detector.detectAndCompute(self.img2_gray, None)
+
+        #Computar distâncias (similaridades)
+        matcher = cv2.BFMatcher(norm_type)
+        raw_matches = matcher.knnMatch(des1, des2, k=2)
+
+        #selecionar com limiar
+        good_matches = []
+        for m, n in raw_matches:
+            if m.distance < threshold * n.distance:
+                good_matches.append(m)
+
+        # Desenhar retas entre pontos correspondentes
+        self.matches_img = cv2.drawMatches(self.img1_color, kp1, self.img2_color, kp2, good_matches, None, flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+
+        # RANSAC
+        if len(good_matches) < 4:
+            raise ValueError(f"Pontos insuficientes para calcular a homografia. Encontrados: {len(good_matches)}.")
+
+        src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+        dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
+
+        H, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+
+        height_img1, width_img1 = self.img1_color.shape[:2]
+        height_img2, width_img2 = self.img2_color.shape[:2]
+        panorama_width = width_img1 + width_img2
+        panorama_height = max(height_img1, height_img2)
+
+        panorama = cv2.warpPerspective(self.img1_color, H, (panorama_width, panorama_height))
+        
+        panorama[0:height_img2, 0:width_img2] = self.img2_color
+
+        self.paronama = panorama
+    
+    def save_image(self, file_name:str, img_type:str):
+        if img_type == 'panorama':
+            cv2.imwrite(f'img_results/{file_name}.jpg', self.paronama)
+        elif img_type == 'lines':
+            cv2.imwrite(f'img_results/{file_name}.jpg', self.matches_img)
+
+    def show_image(self, img_type:str):
+        if img_type == 'panorama':
+            plt.imshow(cv2.cvtColor(self.paronama, cv2.COLOR_BGR2RGB))
+        elif img_type == 'lines':
+            plt.imshow(cv2.cvtColor(self.matches_img, cv2.COLOR_BGR2RGB))
+        
+        plt.show()
