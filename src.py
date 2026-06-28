@@ -10,7 +10,7 @@ class Interpolation(str, Enum):
     bilinear = 'bilinear'
     bicubic = 'bicubic'
 
-def CNinterpolation(img: np.ndarray, x: float, y: float) -> int:
+def cn_interpolation(img: np.ndarray, x: float, y: float) -> int:
     """
     Input: img [ORIGINAL IMAGE]
            x [ORIGINAL COORDENATE X]
@@ -23,7 +23,7 @@ def CNinterpolation(img: np.ndarray, x: float, y: float) -> int:
 
     return img[x_, y_]
 
-def BilinearInterpolation(img: np.ndarray, x: float, y: float) -> int:
+def bilinear_interpolation(img: np.ndarray, x: float, y: float) -> int:
     """
     Input: img [ORIGINAL IMAGE]
            x [ORIGINAL COORDENATE X]
@@ -48,7 +48,7 @@ def BilinearInterpolation(img: np.ndarray, x: float, y: float) -> int:
     value = topLeft + topRight + bottomLeft + bottomRight
     return int(np.clip(value, 0, 255))
 
-def BicubicInterpolation(img: np.ndarray, x: float, y: float) -> int:
+def bicubic_interpolation(img: np.ndarray, x: float, y: float) -> int:
     """
     Input: img [ORIGINAL IMAGE]
            x [ORIGINAL COORDENATE X]
@@ -75,7 +75,7 @@ def BicubicInterpolation(img: np.ndarray, x: float, y: float) -> int:
 
     return np.clip(result, 0 , 255)
 
-def LagrangeInterpolation(img: np.ndarray, x: float, y: float) -> int:
+def lagrange_interpolation(img: np.ndarray, x: float, y: float) -> int:
     """
     Input: img [ORIGINAL IMAGE]
            x [ORIGINAL COORDENATE X]
@@ -112,10 +112,10 @@ def LagrangeInterpolation(img: np.ndarray, x: float, y: float) -> int:
     return int(np.clip(term1 + term2 + term3 + term4, 0, 255))
 
 class ImageManager():
-    def __init__(self, file_name: str, interpolation: Callable):
+    def __init__(self, file_name: str, interpolation: Callable, gray_scale:bool = False):
         self.img = self._load_image(file_name)
         self.transformed_img = None
-        self._to_grayscale()
+        if gray_scale: self._to_grayscale()
         self._to_uint8()
         self.interpolation_func = interpolation
 
@@ -177,9 +177,9 @@ class ImageManager():
     
     def save_image(self, file_name:str, transformed = False):
         if transformed:
-            plt.imsave(file_name, self.transformed_img, cmap = 'gray')
+            plt.imsave('img_results/' + file_name, self.transformed_img, cmap = 'gray')
         else:
-            plt.imsave(file_name, self.img, cmap = 'gray')
+            plt.imsave('img_results/' + file_name, self.img, cmap = 'gray')
         
     
     def set_interpolation(self, new_interpolation: Callable):
@@ -192,3 +192,11 @@ class ImageManager():
             plt.imshow(self.img, cmap= 'gray')
         
         plt.show()
+
+
+ESTRATEGIAS_INTERPOLACAO = {
+    Interpolation.cni: cn_interpolation,
+    Interpolation.lagrange: lagrange_interpolation,
+    Interpolation.bilinear: bilinear_interpolation,
+    Interpolation.bicubic: bicubic_interpolation
+}

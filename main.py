@@ -21,15 +21,8 @@ def main(img: Annotated[str, typer.Option('-i', '--input', '--image', '--entrada
         raise ValueError('Coloque ao menos o valor de uma das transformações')
 
     #instanciando ImageManager
-    match interpolation:
-        case src.Interpolation.cni:
-            image = src.ImageManager(img, src.CNinterpolation)
-        case src.Interpolation.lagrange:
-            image = src.ImageManager(img, src.LagrangeInterpolation)
-        case src.Interpolation.bilinear:
-            image = src.ImageManager(img, src.BilinearInterpolation)
-        case src.Interpolation.bicubic:
-            image = src.ImageManager(img, src.BicubicInterpolation)
+    func_interpolacao = src.ESTRATEGIAS_INTERPOLACAO[interpolation]
+    image = src.ImageManager(img, func_interpolacao, gray_scale=True)
     
     #se não expecifica a dimensão de saida, mantém a da imagem original
     if dim is None:
