@@ -12,7 +12,7 @@ def command_transform(args):
     
     # Utilizando o Dicionário de Estratégias do src.py
     funcao_interpolacao = src.ESTRATEGIAS_INTERPOLACAO[interpolation_enum]
-    image = src.ImageManager(args.input, funcao_interpolacao)
+    image = src.ImageManager(args.input, funcao_interpolacao, gray_scale=True)
 
     # Se dimensão não foi passada (é uma lista de 2 itens ou None)
     dim = tuple(args.dimension) if args.dimension else (image.img.shape[0], image.img.shape[1])
